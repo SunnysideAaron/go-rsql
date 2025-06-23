@@ -1,7 +1,7 @@
-go-rsql
-=======
+# go-rsql
 
-# overview
+## overview
+
 RSQL is a query language for parametrized filtering of entries in APIs. 
 It is based on FIQL (Feed Item Query Language) – an URI-friendly syntax for expressing filters across the entries in an Atom Feed.
 FIQL is great for use in URI; there are no unsafe characters, so URL encoding is not required.
@@ -11,9 +11,10 @@ so RSQL also provides a friendlier syntax for logical operators and some compari
 This is a small RSQL helper library, written in golang.
 It can be used to parse a RSQL string and turn it into a database query string.
 
-Currently, only mongodb is supported out of the box (however it is very easy to extend the parser if needed).
+Currently, mongodb and SQL is supported out of the box. It is very easy to create a new parser if needed.
 
-# basic usage
+## basic usage (mongodb)
+
 ```go
 package main
 
@@ -38,9 +39,35 @@ func main(){
 }
 ```
 
+## basic usage (SQL)
 
-# supported operators
-The library supports the following basic operators by default:
+```go
+package main
+
+import (
+
+"github.com/rbicker/go-rsql"
+"log"
+)
+
+func main(){
+	parser, err := rsql.NewParser(rsql.SQL())
+	if err != nil {
+		log.Fatalf("error while creating parser: %s", err)
+	}
+	s := `status=="A",qty=lt=30`
+	res, err := parser.Process(s)
+	if err != nil {
+		log.Fatalf("error while parsing: %s", err)
+	}
+	log.Println(res)
+	// { "$or": [ { "status": "A" }, { "qty": { "$lt": 30 } } ] }
+}
+```
+
+## supported operators
+
+go-rsql supports the following basic operators by default:
 
 | Basic Operator | Description         |
 |----------------|---------------------|
@@ -53,7 +80,7 @@ The library supports the following basic operators by default:
 | =in=           | In                  |
 | =out=          | Not in              |
 
-The following table lists two joining operators:
+go-rsql supports two joining operators:
 
 | Composite Operator | Description         |
 |--------------------|---------------------|
@@ -61,9 +88,10 @@ The following table lists two joining operators:
 | ,                  | Logical OR          |
 
 
-# advanced usage 
+## advanced usage 
 
-## custom operators
+### custom operators
+
 The library makes it easy to define custom operators:
 ```go
 package main
@@ -126,7 +154,8 @@ func main(){
 }
 ```
 
-## transform keys
+### transform keys
+
 If your database key naming scheme is different from the one used in your rsql statements, you can add functions to transform your keys.
 
 ```go
@@ -156,7 +185,8 @@ func main() {
 }
 ```
 
-## define allowed or forbidden keys
+### define allowed or forbidden keys
+
 ```go
 package main
 

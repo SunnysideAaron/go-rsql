@@ -140,6 +140,109 @@ func Mongo() func(parser *Parser) error {
 	}
 }
 
+// SQL adds the default SQL operators to the parser
+func SQL() func(parser *Parser) error {
+	return func(parser *Parser) error {
+		// operators
+		var operators = []Operator{
+			{
+				"==",
+				func(key, value string) string {
+					return fmt.Sprintf(`%s = %s`, key, value)
+				},
+			},
+			{
+				"!=",
+				func(key, value string) string {
+					return fmt.Sprintf(`%s <> %s`, key, value)
+				},
+			},
+			{
+				"=gt=",
+				func(key, value string) string {
+					return fmt.Sprintf(`%s > %s`, key, value)
+				},
+			},
+			{
+				"=ge=",
+				func(key, value string) string {
+					return fmt.Sprintf(`%s >= %s`, key, value)
+				},
+			},
+			{
+				"=lt=",
+				func(key, value string) string {
+					return fmt.Sprintf(`%s < %s`, key, value)
+				},
+			},
+			{
+				"=le=",
+				func(key, value string) string {
+					return fmt.Sprintf(`%s <= %s`, key, value)
+				},
+			},
+			{
+				"=in=",
+				func(key, value string) string {
+					// remove parentheses
+					value = value[1 : len(value)-1]
+					return fmt.Sprintf(`%s IN (%s)`, key, value)
+				},
+			},
+			{
+				"=out=",
+				func(key, value string) string {
+					// remove parentheses
+					value = value[1 : len(value)-1]
+					return fmt.Sprintf(`%s NOT IN (%s)`, key, value)
+				},
+			},
+		}
+		parser.operators = append(parser.operators, operators...)
+		// AND formatter
+		parser.andFormatter = func(ss []string) string {
+			if len(ss) == 0 {
+				return ""
+			}
+			if len(ss) == 1 {
+				return ss[0]
+			}
+
+			// Add parentheses around expressions that contain AND or OR
+			for i, s := range ss {
+				if strings.Contains(s, " AND ") || strings.Contains(s, " OR ") {
+					if !strings.HasPrefix(s, "(") || !strings.HasSuffix(s, ")") {
+						ss[i] = "(" + s + ")"
+					}
+				}
+			}
+
+			return strings.Join(ss, " AND ")
+		}
+		// OR formatter
+		parser.orFormatter = func(ss []string) string {
+			if len(ss) == 0 {
+				return ""
+			}
+			if len(ss) == 1 {
+				return ss[0]
+			}
+
+			// Add parentheses around expressions that contain AND or OR
+			for i, s := range ss {
+				if strings.Contains(s, " AND ") || strings.Contains(s, " OR ") {
+					if !strings.HasPrefix(s, "(") || !strings.HasSuffix(s, ")") {
+						ss[i] = "(" + s + ")"
+					}
+				}
+			}
+
+			return strings.Join(ss, " OR ")
+		}
+		return nil
+	}
+}
+
 // WithOperator adds custom operators to the parser
 func WithOperators(operators ...Operator) func(parser *Parser) error {
 	return func(parser *Parser) error {
