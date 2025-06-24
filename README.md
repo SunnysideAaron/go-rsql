@@ -55,13 +55,16 @@ func main() {
 	if err != nil {
 		log.Fatalf("error while creating parser: %s", err)
 	}
-	s := `status=="A",qty=lt=30`
-	res, err := parser.Process(s)
+	s := `status==A,qty=lt=30`
+
+	var args []any
+
+	res, args, err := parser.Process(s)
 	if err != nil {
 		log.Fatalf("error while parsing: %s", err)
 	}
 	log.Println(res)
-	// status = "A" OR qty < 30
+	// status = $1 OR qty < $2
 
 	// example use
 	qry := "SELECT * FROM books"
@@ -72,7 +75,10 @@ func main() {
 	}
 
 	log.Println(qry)
-	// SELECT * FROM books WHERE status = "A" OR qty < 30
+	// SELECT * FROM books WHERE status = $1 OR qty < $2
+
+	log.Println(args)
+	// [A 30]
 }
 ```
 
