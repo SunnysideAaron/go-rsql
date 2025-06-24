@@ -64,18 +64,15 @@ func main() {
 	// status = "A" OR qty < 30
 
 	// example use
-	// The 1=1 allows us to add or not add more conditions. It shouldn't affect
-	// query run times.
-	qry := "SELECT * FROM books WHERE 1=1"
+	qry := "SELECT * FROM books"
 	// This example is simplified. but in a real world example you may not
 	// have a url query string and res will be empty.
 	if res != "" {
-		// The parentheses may not be necessary but they help ensure the order
-		// of operations.
-		qry += " AND (" + res + ")"
+		qry += " WHERE " + res
 	}
 
 	log.Println(qry)
+	// SELECT * FROM books WHERE status = "A" OR qty < 30
 }
 ```
 
