@@ -26,7 +26,7 @@ var reOperator = regexp.MustCompile(`([!=])[^=()]*=`)
 // (MongoDB) or prepared statements (SQL).
 type Operator struct {
 	Operator  string
-	Formatter func(key, value string) (string, []any)
+	Formatter func(key, value string, paramIndex *int) (string, []any)
 }
 
 // Parser represents a RSQL parser.
@@ -66,43 +66,43 @@ func Mongo() func(parser *Parser) error {
 		var operators = []Operator{
 			{
 				"==",
-				func(key, value string) (string, []any) {
+				func(key, value string, paramIndex *int) (string, []any) {
 					return fmt.Sprintf(`{ "%s": %s }`, key, value), []any{value}
 				},
 			},
 			{
 				"!=",
-				func(key, value string) (string, []any) {
+				func(key, value string, paramIndex *int) (string, []any) {
 					return fmt.Sprintf(`{ "%s": { "$ne": %s } }`, key, value), []any{value}
 				},
 			},
 			{
 				"=gt=",
-				func(key, value string) (string, []any) {
+				func(key, value string, paramIndex *int) (string, []any) {
 					return fmt.Sprintf(`{ "%s": { "$gt": %s } }`, key, value), []any{value}
 				},
 			},
 			{
 				"=ge=",
-				func(key, value string) (string, []any) {
+				func(key, value string, paramIndex *int) (string, []any) {
 					return fmt.Sprintf(`{ "%s": { "$gte": %s } }`, key, value), []any{value}
 				},
 			},
 			{
 				"=lt=",
-				func(key, value string) (string, []any) {
+				func(key, value string, paramIndex *int) (string, []any) {
 					return fmt.Sprintf(`{ "%s": { "$lt": %s } }`, key, value), []any{value}
 				},
 			},
 			{
 				"=le=",
-				func(key, value string) (string, []any) {
+				func(key, value string, paramIndex *int) (string, []any) {
 					return fmt.Sprintf(`{ "%s": { "$lte": %s } }`, key, value), []any{value}
 				},
 			},
 			{
 				"=in=",
-				func(key, value string) (string, []any) {
+				func(key, value string, paramIndex *int) (string, []any) {
 					// remove parentheses
 					value = value[1 : len(value)-1]
 					return fmt.Sprintf(`{ "%s": { "$in": %s } }`, key, value), []any{value}
@@ -110,7 +110,7 @@ func Mongo() func(parser *Parser) error {
 			},
 			{
 				"=out=",
-				func(key, value string) (string, []any) {
+				func(key, value string, paramIndex *int) (string, []any) {
 					// remove parentheses
 					value = value[1 : len(value)-1]
 					return fmt.Sprintf(`{ "%s": { "$nin": %s } }`, key, value), []any{value}
@@ -145,54 +145,52 @@ func Mongo() func(parser *Parser) error {
 // SQL adds the default SQL operators to the parser
 func SQL() func(parser *Parser) error {
 	return func(parser *Parser) error {
-		paramIndex := 0
-
 		var operators = []Operator{
 			{
 				"==",
-				func(key, value string) (string, []any) {
-					paramIndex++
-					return fmt.Sprintf(`%s = $%d`, key, paramIndex), []any{value}
+				func(key, value string, paramIndex *int) (string, []any) {
+					*paramIndex++
+					return fmt.Sprintf(`%s = $%d`, key, *paramIndex), []any{value}
 				},
 			},
 			{
 				"!=",
-				func(key, value string) (string, []any) {
-					paramIndex++
-					return fmt.Sprintf(`%s <> $%d`, key, paramIndex), []any{value}
+				func(key, value string, paramIndex *int) (string, []any) {
+					*paramIndex++
+					return fmt.Sprintf(`%s <> $%d`, key, *paramIndex), []any{value}
 				},
 			},
 			{
 				"=gt=",
-				func(key, value string) (string, []any) {
-					paramIndex++
-					return fmt.Sprintf(`%s > $%d`, key, paramIndex), []any{value}
+				func(key, value string, paramIndex *int) (string, []any) {
+					*paramIndex++
+					return fmt.Sprintf(`%s > $%d`, key, *paramIndex), []any{value}
 				},
 			},
 			{
 				"=ge=",
-				func(key, value string) (string, []any) {
-					paramIndex++
-					return fmt.Sprintf(`%s >= $%d`, key, paramIndex), []any{value}
+				func(key, value string, paramIndex *int) (string, []any) {
+					*paramIndex++
+					return fmt.Sprintf(`%s >= $%d`, key, *paramIndex), []any{value}
 				},
 			},
 			{
 				"=lt=",
-				func(key, value string) (string, []any) {
-					paramIndex++
-					return fmt.Sprintf(`%s < $%d`, key, paramIndex), []any{value}
+				func(key, value string, paramIndex *int) (string, []any) {
+					*paramIndex++
+					return fmt.Sprintf(`%s < $%d`, key, *paramIndex), []any{value}
 				},
 			},
 			{
 				"=le=",
-				func(key, value string) (string, []any) {
-					paramIndex++
-					return fmt.Sprintf(`%s <= $%d`, key, paramIndex), []any{value}
+				func(key, value string, paramIndex *int) (string, []any) {
+					*paramIndex++
+					return fmt.Sprintf(`%s <= $%d`, key, *paramIndex), []any{value}
 				},
 			},
 			{
 				"=in=",
-				func(key, value string) (string, []any) {
+				func(key, value string, paramIndex *int) (string, []any) {
 					// remove parentheses
 					value = value[1 : len(value)-1]
 					// Split values and create placeholders
@@ -201,15 +199,15 @@ func SQL() func(parser *Parser) error {
 					placeholders := make([]string, len(values))
 					for i, v := range values {
 						vals[i] = v
-						paramIndex++
-						placeholders[i] = fmt.Sprintf("$%d", paramIndex)
+						*paramIndex++
+						placeholders[i] = fmt.Sprintf("$%d", *paramIndex)
 					}
 					return fmt.Sprintf(`%s IN (%s)`, key, strings.Join(placeholders, ", ")), vals
 				},
 			},
 			{
 				"=out=",
-				func(key, value string) (string, []any) {
+				func(key, value string, paramIndex *int) (string, []any) {
 					// remove parentheses
 					value = value[1 : len(value)-1]
 					// Split values and create placeholders
@@ -218,8 +216,8 @@ func SQL() func(parser *Parser) error {
 					placeholders := make([]string, len(values))
 					for i, v := range values {
 						vals[i] = v
-						paramIndex++
-						placeholders[i] = fmt.Sprintf("$%d", paramIndex)
+						*paramIndex++
+						placeholders[i] = fmt.Sprintf("$%d", *paramIndex)
 					}
 					return fmt.Sprintf(`%s NOT IN (%s)`, key, strings.Join(placeholders, ", ")), vals
 				},
@@ -328,6 +326,8 @@ func containsString(ss []string, s string) bool {
 func (parser *Parser) Process(s string, options ...func(*ProcessOptions) error) (string, []any, error) {
 	// Initialize values slice
 	var values []any
+	// paramIndex has to be here and not in the parsers to support custom formatters.
+	paramIndex := 0
 
 	// set process options
 	opts := ProcessOptions{}
@@ -403,7 +403,7 @@ func (parser *Parser) Process(s string, options ...func(*ProcessOptions) error) 
 			var opValues []any
 			for _, op := range parser.operators {
 				if operator == op.Operator {
-					res, opValues = op.Formatter(key, value)
+					res, opValues = op.Formatter(key, value, &paramIndex)
 					values = append(values, opValues...)
 					break
 				}
